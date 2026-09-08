@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>查询可预约时段</title></head>
+<body>
+<h2>查询可预约时段</h2>
+<p>日期：{{ date }}</p>
+<table border="1" cellpadding="6">
+<thead><tr><th>时段</th><th>已约</th><th>状态</th></tr></thead>
+<tbody>
+{% for s in slots %}
+<tr><td>{{ s.time }}</td><td>{{ s.used }}</td><td>{{ s.status }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<p><a href="/">返回首页</a></p>
+</body>
+</html>

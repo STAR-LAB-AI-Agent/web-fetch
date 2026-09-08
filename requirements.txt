@@ -1,0 +1,4 @@
+# 初版 v1 依赖（后续迭代会追加 openai 等在线路由依赖）
+playwright>=1.40
+Flask>=3.0
+pytest>=7.0
