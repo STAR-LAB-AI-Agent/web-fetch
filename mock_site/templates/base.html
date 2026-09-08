@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}信息发布平台{% endblock %}</title>
+<style>
+ body{font-family:"Microsoft YaHei",Arial,sans-serif;margin:0;background:#f5f6f8;color:#222}
+ header{background:#1f3a68;color:#fff;padding:14px 24px}
+ header a{color:#fff;text-decoration:none;margin-right:18px}
+ main{max-width:960px;margin:24px auto;background:#fff;padding:24px;border-radius:6px}
+ table{border-collapse:collapse;width:100%}
+ th,td{border:1px solid #dcdfe6;padding:8px 10px;font-size:14px;text-align:left}
+ th{background:#eef1f6}
+ p.summary{line-height:1.8;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <a href="/">首页</a>
+  <a href="/notices">公告列表</a>
+</header>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>
