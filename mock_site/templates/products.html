@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}设备列表{% endblock %}
+{% block content %}
+<h2>设备列表</h2>
+<div class="cards">
+{% for r in rows %}
+  <div class="card">
+    <h3 class="col-name">{{ r.name }}</h3>
+    <p class="col-model">型号：{{ r.model }}</p>
+    <p class="col-price">参考价：{{ r.price }} 元</p>
+    <p class="col-vendor">供应商：{{ r.vendor }}</p>
+    <p><a class="col-link" href="/products/{{ r.id }}">查看详情</a></p>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

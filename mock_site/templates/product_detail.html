@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<h2>{{ item.name }}</h2>
+<dl>
+  <dt>设备编号</dt><dd class="col-id">{{ item.id }}</dd>
+  <dt>型号</dt><dd class="col-model">{{ item.model }}</dd>
+  <dt>参考价</dt><dd class="col-price">{{ item.price }}</dd>
+  <dt>供应商</dt><dd class="col-vendor">{{ item.vendor }}</dd>
+</dl>
+<p><a href="/products">返回设备列表</a></p>
+{% endblock %}

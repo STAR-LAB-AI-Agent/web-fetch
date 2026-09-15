@@ -3,10 +3,12 @@
 
 设计要点：
 - 数据固定在内存中，可重复、可预期，便于自动化测试与结果复现。
-- 本期（v1）提供一类目标页面：公告列表（表格结构），用于演示
-  “从指定网页采集用户要求的字段”。
+- 提供两类目标页面：公告列表（表格结构）与设备列表（卡片结构），各有详情页，
+  用于演示“从指定网页采集用户要求的字段”。
+- 公告列表带分页，且第 1 页与第 2 页之间刻意保留 1 条重复记录（N-06），
+  用于演示可选功能“多网页结果去重”。
 """
-from flask import Flask, render_template
+from flask import Flask, render_template, abort, request
 
 app = Flask(__name__)
 
@@ -25,15 +27,64 @@ NOTICES = [
     {"id": "N-12", "title": "关于2026年国庆节放假安排的通知", "unit": "学院办公室", "date": "2026-09-12", "category": "行政通知", "summary": "放假期间请做好值班安排，离开工位前关闭设备电源。"},
 ]
 
+PRODUCTS = [
+    {"id": "P-01", "name": "高性能计算服务器", "model": "HS-7020", "price": "128000", "vendor": "启元科技"},
+    {"id": "P-02", "name": "千兆接入交换机", "model": "SW-2410G", "price": "3200", "vendor": "启元科技"},
+    {"id": "P-03", "name": "网络安全审计系统", "model": "AU-3300", "price": "86000", "vendor": "恒信安全"},
+    {"id": "P-04", "name": "漏洞扫描设备", "model": "VS-1200", "price": "54000", "vendor": "恒信安全"},
+    {"id": "P-05", "name": "数据备份存储阵列", "model": "ST-4800", "price": "152000", "vendor": "长天存储"},
+    {"id": "P-06", "name": "机架式防火墙", "model": "FW-2600", "price": "47000", "vendor": "恒信安全"},
+    {"id": "P-07", "name": "入侵检测探针", "model": "ID-1500", "price": "39000", "vendor": "恒信安全"},
+    {"id": "P-08", "name": "终端安全管理软件", "model": "EP-900", "price": "18000", "vendor": "启元科技"},
+]
+
+PER_PAGE = 5
+
+
+def notice_pages():
+    """公告分页数据。第 1 页末尾与第 2 页开头刻意重复 N-06，用于演示去重。"""
+    first = NOTICES[0:PER_PAGE] + [NOTICES[5]]
+    second = NOTICES[5:10]
+    third = NOTICES[10:12]
+    return [first, second, third]
+
 
 @app.route("/")
 def index():
-    return render_template("index.html", notice_total=len(NOTICES))
+    return render_template("index.html", notice_total=len(NOTICES), product_total=len(PRODUCTS))
 
 
 @app.route("/notices")
 def notices():
-    return render_template("notices.html", rows=NOTICES)
+    try:
+        page = int(request.args.get("page", "1"))
+    except ValueError:
+        abort(400)
+    pages = notice_pages()
+    if page < 1 or page > len(pages):
+        abort(404)
+    return render_template("notices.html", rows=pages[page - 1], page=page, total=len(pages))
+
+
+@app.route("/notices/<nid>")
+def notice_detail(nid):
+    for item in NOTICES:
+        if item["id"] == nid:
+            return render_template("notice_detail.html", item=item)
+    abort(404)
+
+
+@app.route("/products")
+def products():
+    return render_template("products.html", rows=PRODUCTS)
+
+
+@app.route("/products/<pid>")
+def product_detail(pid):
+    for item in PRODUCTS:
+        if item["id"] == pid:
+            return render_template("product_detail.html", item=item)
+    abort(404)
 
 
 if __name__ == "__main__":

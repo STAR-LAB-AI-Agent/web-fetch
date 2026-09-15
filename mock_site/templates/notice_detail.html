@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h2>{{ item.title }}</h2>
+<dl>
+  <dt>编号</dt><dd class="col-id">{{ item.id }}</dd>
+  <dt>发布单位</dt><dd class="col-unit">{{ item.unit }}</dd>
+  <dt>发布时间</dt><dd class="col-date">{{ item.date }}</dd>
+  <dt>分类</dt><dd class="col-category">{{ item.category }}</dd>
+</dl>
+<h3>正文</h3>
+<p class="summary">{{ item.summary }}</p>
+<p>附件：<a href="/files/{{ item.id }}.pdf">附件下载</a></p>
+<p><a href="/notices">返回公告列表</a></p>
+{% endblock %}

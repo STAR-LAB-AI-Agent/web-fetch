@@ -4,7 +4,7 @@
 <h2>公告列表</h2>
 <table id="notice-table">
   <thead>
-    <tr><th>编号</th><th>标题</th><th>发布单位</th><th>发布时间</th><th>分类</th></tr>
+    <tr><th>编号</th><th>标题</th><th>发布单位</th><th>发布时间</th><th>分类</th><th>详情</th></tr>
   </thead>
   <tbody>
   {% for r in rows %}
@@ -14,8 +14,14 @@
       <td class="col-unit">{{ r.unit }}</td>
       <td class="col-date">{{ r.date }}</td>
       <td class="col-category">{{ r.category }}</td>
+      <td class="col-link"><a href="/notices/{{ r.id }}">查看</a></td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
+<nav class="pager">
+  第 {{ page }} / {{ total }} 页
+  {% if page > 1 %}<a href="/notices?page={{ page - 1 }}">上一页</a>{% endif %}
+  {% if page < total %}<a href="/notices?page={{ page + 1 }}">下一页</a>{% endif %}
+</nav>
 {% endblock %}
