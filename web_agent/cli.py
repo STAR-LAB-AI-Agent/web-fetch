@@ -67,7 +67,7 @@ def cmd_collect(args) -> dict:
 
     records = collected["records"]
     agent = WebAgent(args.base, headless=not args.headed)
-    exported = agent.export_result(records, args.format, args.out)
+    exported = agent.export_result(records, args.format, args.out, overwrite=args.force)
 
     return {
         "ok": True,
@@ -82,7 +82,7 @@ def cmd_collect(args) -> dict:
 
 def cmd_agent(args) -> dict:
     agent = WebAgent(args.base, headless=not args.headed)
-    return agent.run(args.text, out=args.out)
+    return agent.run(args.text, out=args.out, overwrite=args.force)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -101,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
     pc.add_argument("--pages", default="", help="页码，如 1,2 或 all（多页采集）")
     pc.add_argument("--dedup-by", default=None, help="多页采集时的去重字段")
     pc.add_argument("--headed", action="store_true", help="显示浏览器窗口")
+    pc.add_argument("--force", action="store_true", help="输出文件已存在时直接覆盖，不再询问")
     pc.set_defaults(func=cmd_collect)
 
     pa = sub.add_parser("agent", help="自然语言端到端采集")
@@ -108,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     pa.add_argument("--text", required=True, help="自然语言需求")
     pa.add_argument("--out", default=None, help="输出文件路径")
     pa.add_argument("--headed", action="store_true", help="显示浏览器窗口")
+    pa.add_argument("--force", action="store_true", help="输出文件已存在时直接覆盖，不再询问")
     pa.set_defaults(func=cmd_agent)
 
     return parser

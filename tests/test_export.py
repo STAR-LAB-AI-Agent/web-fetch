@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""导出功能的单元测试：JSON / CSV / Excel。"""
+"""导出功能的单元测试：JSON / CSV / Excel，以及写文件前的覆盖确认。"""
+import io
 import json
 
 import pytest
@@ -58,3 +59,89 @@ def test_export_rejects_unknown_format():
 def test_xlsx_requires_output_path():
     with pytest.raises(ValueError):
         export(ROWS, "xlsx", None)
+
+
+def test_export_without_path_writes_nothing():
+    info = export(ROWS, "json", None)
+    assert info["written"] is False
+    assert info["count"] == 2
+
+
+# ---------------- 写文件前的覆盖确认（有风险操作的用户确认） ----------------
+
+def _stub_confirm(answer: bool):
+    """记录被询问过的路径，并固定返回 answer。"""
+    calls = []
+
+    def confirm(path):
+        calls.append(path)
+        return answer
+
+    return calls, confirm
+
+
+def test_existing_file_is_kept_when_user_declines(tmp_path):
+    path = tmp_path / "out.json"
+    path.write_text("旧内容", encoding="utf-8")
+    calls, confirm = _stub_confirm(False)
+    info = export(ROWS, "json", str(path), confirm=confirm)
+    assert info["written"] is False
+    assert "取消写入" in info["message"]
+    assert calls == [str(path)]                          # 确实问过用户
+    assert path.read_text(encoding="utf-8") == "旧内容"   # 原文件未被改动
+
+
+def test_confirmed_overwrite_replaces_file(tmp_path):
+    path = tmp_path / "out.json"
+    path.write_text("旧内容", encoding="utf-8")
+    calls, confirm = _stub_confirm(True)
+    info = export(ROWS, "json", str(path), confirm=confirm)
+    assert info["written"] is True
+    assert calls == [str(path)]
+    assert json.loads(path.read_text(encoding="utf-8"))[1]["标题"] == "乙"
+
+
+def test_new_file_is_written_without_asking(tmp_path):
+    calls, confirm = _stub_confirm(True)
+    info = export(ROWS, "json", str(tmp_path / "brand_new.json"), confirm=confirm)
+    assert info["written"] is True
+    assert calls == []                                   # 不打扰用户
+
+
+def test_overwrite_flag_skips_confirmation(tmp_path):
+    path = tmp_path / "out.csv"
+    path.write_text("旧内容", encoding="utf-8")
+    calls, confirm = _stub_confirm(True)
+    info = export(ROWS, "csv", str(path), overwrite=True, confirm=confirm)
+    assert info["written"] is True
+    assert calls == []
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_non_interactive_environment_declines_overwrite(tmp_path, monkeypatch):
+    path = tmp_path / "out.json"
+    path.write_text("旧内容", encoding="utf-8")
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))     # 模拟管道/自动化：无人应答
+    info = export(ROWS, "json", str(path))
+    assert info["written"] is False
+    assert path.read_text(encoding="utf-8") == "旧内容"
+
+
+def test_answer_with_byte_order_mark_still_confirms(tmp_path, monkeypatch):
+    """从管道或带 BOM 的文件读入的应答不应影响确认判断。"""
+    path = tmp_path / "out.json"
+    path.write_text("旧内容", encoding="utf-8")
+    monkeypatch.setattr("sys.stdin", io.StringIO("\ufeffy\n"))
+    info = export(ROWS, "json", str(path))
+    assert info["written"] is True
+
+
+def test_xlsx_overwrite_also_asks(tmp_path):
+    path = tmp_path / "out.xlsx"
+    export(ROWS, "xlsx", str(path))
+    before = path.read_bytes()
+    calls, confirm = _stub_confirm(False)
+    info = export(ROWS, "xlsx", str(path), confirm=confirm)
+    assert info["written"] is False
+    assert calls == [str(path)]
+    assert path.read_bytes() == before

@@ -4,7 +4,7 @@
 智能体可调用的工具：
 - collect_page  ：采集单个页面，按用户要求的字段输出结构化记录
 - collect_pages ：多网页采集并合并去重（任务书的可选功能）
-- export_result ：把记录导出成 JSON / CSV / Excel
+- export_result ：把记录导出成 JSON / CSV / Excel（目标文件已存在时先询问是否覆盖）
 """
 from __future__ import annotations
 
@@ -110,15 +110,16 @@ class WebAgent:
         }
 
     # ---------------- 工具 3：导出 ----------------
-    def export_result(self, records, fmt: str = "json", path: str | None = None) -> dict:
+    def export_result(self, records, fmt: str = "json", path: str | None = None,
+                      *, overwrite: bool = False) -> dict:
         if not path:
             os.makedirs("exports", exist_ok=True)
             name = "collect_%s" % __import__("time").strftime("%Y%m%d_%H%M%S")
             path = os.path.join("exports", "%s.%s" % (name, fmt))
-        return export_fn(records, fmt, path)
+        return export_fn(records, fmt, path, overwrite=overwrite)
 
     # ---------------- 自然语言入口 ----------------
-    def run(self, text: str, out: str | None = None) -> dict:
+    def run(self, text: str, out: str | None = None, *, overwrite: bool = False) -> dict:
         plan = llm_plan(text, self.base_url) or route_fn(text)
         fields = plan.get("fields") or []
         pages = plan.get("pages") or [1]
@@ -135,7 +136,7 @@ class WebAgent:
                 "dedup_by": plan.get("dedup_by"), "missing_fields": single["missing_fields"],
             }
 
-        exported = self.export_result(collected["records"], fmt, out)
+        exported = self.export_result(collected["records"], fmt, out, overwrite=overwrite)
         return {
             "ok": True,
             "action": "collect",
