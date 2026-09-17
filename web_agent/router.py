@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlparse
 
 # 目标页面关键词 -> 路径
 TARGET_KEYWORDS = (
@@ -29,6 +30,11 @@ FIELD_TRIGGERS = (
     ("链接", ("链接", "详情", "网址", "地址", "url", "URL")),
     ("正文", ("正文", "摘要", "内容")),
 )
+
+# 表达「只看某一条 / 详情页」的说法
+DETAIL_KEYWORDS = ("详情", "这条", "该条", "某一条", "单条",
+                   "这个公告", "该公告", "这个设备", "该设备",
+                   "这个产品", "该产品")
 
 CN_NUM = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6,
           "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6}
@@ -92,17 +98,39 @@ def detect_dedup(text: str, fields: list):
     return "链接"
 
 
+def _path_only(path: str) -> str:
+    """去掉协议与域名，只留路径部分。"""
+    if path.startswith("http://") or path.startswith("https://"):
+        return urlparse(path).path or "/"
+    return path
+
+
+def detect_kind(text: str, path: str) -> str:
+    """判断目标页面结构；返回 auto 时交给采集层自动识别。
+
+    两类信号指向详情页：话里出现「详情 / 这条 / 单条」等说法，
+    或者目标路径是 /notices/N-01 这种两段式（列表页只有一段）。
+    """
+    if any(w in text for w in DETAIL_KEYWORDS):
+        return "item"
+    if _path_only(path).rstrip("/").count("/") >= 2:
+        return "item"
+    return "auto"
+
+
 def route(text: str) -> dict:
     """把一句自然语言解析成采集计划。"""
     text = (text or "").strip()
     fields = detect_fields(text)
+    path = detect_path(text)
     plan = {
         "action": "collect",
-        "path": detect_path(text),
+        "path": path,
         "fields": fields,
         "pages": detect_pages(text),
         "format": detect_format(text),
         "dedup_by": detect_dedup(text, fields),
+        "kind": detect_kind(text, path),
         "source": "rule",
     }
     return plan

@@ -29,6 +29,11 @@ SYSTEM_PROMPT = (
 )
 
 
+EMPTY_HINT = ("未采集到任何记录：请确认目标页面确实含有数据，"
+              "或用 --kind table/list/item 指定页面结构；"
+              "字段名与页面不一致时会置空并记入 missing_fields。")
+
+
 def _with_page(path: str, page: int) -> str:
     """在路径上附加分页参数。"""
     parts = urlsplit(path)
@@ -119,17 +124,21 @@ class WebAgent:
         return export_fn(records, fmt, path, overwrite=overwrite)
 
     # ---------------- 自然语言入口 ----------------
-    def run(self, text: str, out: str | None = None, *, overwrite: bool = False) -> dict:
+    def run(self, text: str, out: str | None = None, *, overwrite: bool = False,
+            kind: str | None = None) -> dict:
         plan = llm_plan(text, self.base_url) or route_fn(text)
         fields = plan.get("fields") or []
         pages = plan.get("pages") or [1]
         fmt = plan.get("format") or "json"
+        # 页面结构优先级：命令行显式指定 > 自然语言解析结果 > 自动识别
+        page_kind = kind or plan.get("kind") or "auto"
+        plan["kind"] = page_kind
 
         if pages == "all" or (isinstance(pages, list) and len(pages) > 1):
             collected = self.collect_pages(plan["path"], pages, fields, plan.get("dedup_by"))
         else:
             page = pages[0] if isinstance(pages, list) and pages else 1
-            single = self.collect_page(plan["path"], fields=fields, page=page)
+            single = self.collect_page(plan["path"], fields=fields, page=page, kind=page_kind)
             collected = {
                 "path": plan["path"], "pages": [page], "records": single["records"],
                 "count": single["count"], "duplicates_removed": 0,
@@ -137,7 +146,7 @@ class WebAgent:
             }
 
         exported = self.export_result(collected["records"], fmt, out, overwrite=overwrite)
-        return {
+        result = {
             "ok": True,
             "action": "collect",
             "input": text,
@@ -148,3 +157,6 @@ class WebAgent:
             "records": collected["records"],
             "export": exported,
         }
+        if result["count"] == 0:
+            result["hint"] = EMPTY_HINT
+        return result

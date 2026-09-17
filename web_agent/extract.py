@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """字段抽取核心：把「指定网页 + 用户要求的字段」变成结构化行记录。
 
-支持两类目标页面结构：
+支持三类目标页面结构：
 1. table —— 表头 + 数据行（如公告列表），列名自动取 thead 中的表头；
 2. list  —— 重复的卡片/条目块（如设备列表），块内按「标签：值」解析字段；
-3. item  —— 单条记录的详情页。
+3. item  —— 单条记录的详情页，取标题、正文与「标签：值」字段。
+
+kind="auto" 时按「表格 → 重复卡片 → 详情页」的顺序自动判断。
 
 抽取结果统一为 list[dict]，键为字段名，可直接交给 export 模块输出 JSON/CSV/Excel。
 """
@@ -221,6 +223,28 @@ def records_from_item(raw: dict, fields=None) -> tuple:
     return [rec], missing
 
 
+def pick_list_selector(page):
+    """在页面上找一个出现两次以上的重复块，作为卡片/条目的行选择器。"""
+    for cand in LIST_ROW_CANDIDATES:
+        if page.evaluate("(s) => document.querySelectorAll(s).length >= 2", cand):
+            return cand
+    return None
+
+
+def detect_page_kind(page, row_selector: str | None = None) -> tuple:
+    """自动判断页面结构：表格 → 重复卡片/条目 → 单条详情页。
+
+    前两类都判不出来时退化为详情页，交给 item 抽取器尽力解析。
+    否则详情页会因为「既没有表格也没有重复块」而被当成空结果跳过。
+    """
+    if page.evaluate("() => !!document.querySelector('table tbody tr')"):
+        return "table", row_selector
+    selector = row_selector or pick_list_selector(page)
+    if selector:
+        return "list", selector
+    return "item", None
+
+
 def collect(base_url: str, path: str = "/", *, kind: str = "auto", row_selector: str | None = None,
             fields=None, headless: bool = True) -> dict:
     """采集指定网页，按 fields 抽取字段，返回结构化结果。"""
@@ -239,20 +263,15 @@ def collect(base_url: str, path: str = "/", *, kind: str = "auto", row_selector:
                     "count": 0, "status": status}
 
         if kind == "auto":
-            has_table = page.evaluate("() => !!document.querySelector('table tbody tr')")
-            kind = "table" if has_table else "list"
+            kind, row_selector = detect_page_kind(page, row_selector)
+            log.info("自动识别页面结构：%s（%s）", kind, url)
 
         if kind == "table":
             raw = page.evaluate(JS_TABLE, row_selector or TABLE_ROW_SELECTOR)
             records, missing = records_from_table(raw, fields)
             headers = raw.get("headers") or []
         elif kind == "list":
-            selector = row_selector
-            if not selector:
-                for cand in LIST_ROW_CANDIDATES:
-                    if page.evaluate("(s) => document.querySelectorAll(s).length >= 2", cand):
-                        selector = cand
-                        break
+            selector = row_selector or pick_list_selector(page)
             if not selector:
                 log.warning("未在页面上找到可重复的列表块，跳过采集：%s", url)
                 return {"url": url, "page_title": title, "kind": kind, "row_selector": None,

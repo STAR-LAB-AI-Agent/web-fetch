@@ -56,3 +56,26 @@ def test_route_full_plan():
     assert plan["format"] == "xlsx"
     assert plan["dedup_by"] == "链接"
     assert plan["source"] == "rule"
+
+
+def test_detect_kind_for_detail_intent():
+    assert router.detect_kind("采集 /notices/N-01 这条公告的正文和附件链接", "/notices/N-01") == "item"
+    assert router.detect_kind("看一下设备详情", "/products") == "item"
+
+
+def test_detect_kind_by_two_segment_path():
+    assert router.detect_kind("采集 /products/P-01 的名称和价格", "/products/P-01") == "item"
+    assert router.detect_kind("采集 http://127.0.0.1:5099/notices/N-01 的标题",
+                              "http://127.0.0.1:5099/notices/N-01") == "item"
+
+
+def test_detect_kind_defaults_to_auto_for_list_pages():
+    assert router.detect_kind("把前两页公告导出成 Excel", "/notices") == "auto"
+    assert router.detect_kind("采集设备列表的名称", "/products") == "auto"
+    assert router.detect_kind("采集 http://127.0.0.1:5099/notices 的标题",
+                              "http://127.0.0.1:5099/notices") == "auto"
+
+
+def test_route_includes_kind():
+    assert router.route("把前两页公告的标题导出成 Excel")["kind"] == "auto"
+    assert router.route("采集 /notices/N-01 的正文")["kind"] == "item"

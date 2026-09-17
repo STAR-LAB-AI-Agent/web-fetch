@@ -14,9 +14,13 @@
   python -m web_agent.cli collect --base http://127.0.0.1:5099 --path /notices/N-01 \
       --kind item --fields 标题,发布单位,发布时间,正文
 
-  # 自然语言端到端
+  # 自然语言端到端（列表页）
   python -m web_agent.cli agent --base http://127.0.0.1:5099 \
       --text "把前两页公告的标题、发布时间和链接导出成 Excel"
+
+  # 自然语言端到端（详情页，自动识别为单条记录）
+  python -m web_agent.cli agent --base http://127.0.0.1:5099 \
+      --text "采集 /notices/N-01 这条公告的正文和附件链接"
 """
 from __future__ import annotations
 
@@ -82,7 +86,11 @@ def cmd_collect(args) -> dict:
 
 def cmd_agent(args) -> dict:
     agent = WebAgent(args.base, headless=not args.headed)
-    return agent.run(args.text, out=args.out, overwrite=args.force)
+    result = agent.run(args.text, out=args.out, overwrite=args.force, kind=args.kind)
+    if result.get("hint"):
+        # 提示走 stderr，避免污染 stdout 上的结构化 JSON
+        print(result["hint"], file=sys.stderr)
+    return result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -109,6 +117,8 @@ def build_parser() -> argparse.ArgumentParser:
     pa.add_argument("--text", required=True, help="自然语言需求")
     pa.add_argument("--out", default=None, help="输出文件路径")
     pa.add_argument("--headed", action="store_true", help="显示浏览器窗口")
+    pa.add_argument("--kind", default=None, choices=["auto", "table", "list", "item"],
+                    help="目标页面结构；不指定时由自然语言解析结果决定，解析不出则自动判断")
     pa.add_argument("--force", action="store_true", help="输出文件已存在时直接覆盖，不再询问")
     pa.set_defaults(func=cmd_agent)
 

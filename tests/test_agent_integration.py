@@ -79,3 +79,35 @@ def test_natural_language_dedup_removes_duplicate(base_url, tmp_path):
     assert result["count"] == 10
     assert result["duplicates_removed"] == 1
     assert len(json.loads(out.read_text(encoding="utf-8"))) == 10
+
+
+def test_natural_language_detail_page_is_single_record(base_url, tmp_path):
+    out = tmp_path / "detail.json"
+    result = WebAgent(base_url).run("采集 /notices/N-01 这条公告的正文和附件链接", out=str(out))
+    assert result["plan"]["kind"] == "item"
+    assert result["count"] == 1
+    record = result["records"][0]
+    assert record["正文"]
+    assert record["链接"].endswith("/files/N-01.pdf")
+
+
+def test_natural_language_product_detail_page(base_url, tmp_path):
+    out = tmp_path / "product.json"
+    result = WebAgent(base_url).run("采集 /products/P-01 这个设备的名称和价格", out=str(out))
+    assert result["plan"]["kind"] == "item"
+    assert result["count"] == 1
+    assert result["records"][0]["价格"] == "128000"
+
+
+def test_auto_kind_falls_back_to_item(base_url):
+    """既没有表格也没有重复块的页面，自动识别应退化成详情页而不是返回空。"""
+    res = collect(base_url, "/notices/N-01", fields=["标题", "正文"])
+    assert res["kind"] == "item"
+    assert res["count"] == 1
+
+
+def test_empty_result_carries_hint(base_url):
+    """采不到数据时给出可读提示，而不是静默返回空列表。"""
+    result = WebAgent(base_url).run("采集 /notices/N-99 这条公告的标题")
+    assert result["count"] == 0
+    assert "未采集到任何记录" in result["hint"]
