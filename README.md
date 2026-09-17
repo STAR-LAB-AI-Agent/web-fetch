@@ -122,6 +122,8 @@ pytest -v
 | openpyxl | >=3.1 | MIT | 采集结果导出 Excel | https://openpyxl.readthedocs.io/ |
 | Flask | >=3.0（3.1.3） | BSD-3-Clause | 本地模拟目标网站（仅演示/测试对象） | https://flask.palletsprojects.com/ |
 
+本项目自身采用 **MIT** 许可证发布，许可证全文见仓库根目录 `LICENSE` 文件。
+
 ## 安全与低 Token 措施
 
 - **最小权限**：只访问 `--base` 指定的站点，不外联其他域名；不自动跟随站外链接。
